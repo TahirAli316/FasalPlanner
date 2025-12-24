@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "873894013264",
+    "project_id": "fasalplanner",
+    "storage_bucket": "fasalplanner.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873894013264:android:024a20caa9f30b33eda455",
+        "android_client_info": {
+          "package_name": "com.example.fasalplanner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPbh75p04XxyZ5oYzw4911AZH87mtZLPg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:873894013264:android:ed4c682aaf30b02ceda455",
+        "android_client_info": {
+          "package_name": "com.example.mad_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPbh75p04XxyZ5oYzw4911AZH87mtZLPg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
