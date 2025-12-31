@@ -63,6 +63,31 @@ class FarmingPlanModel {
     };
   }
 
+  /// Copy with updated fields
+  FarmingPlanModel copyWith({
+    String? id,
+    String? cropId,
+    String? cropName,
+    String? userId,
+    DateTime? sowingDate,
+    DateTime? harvestDate,
+    List<FarmingActivity>? activities,
+    DateTime? createdAt,
+    bool? isAIGenerated,
+  }) {
+    return FarmingPlanModel(
+      id: id ?? this.id,
+      cropId: cropId ?? this.cropId,
+      cropName: cropName ?? this.cropName,
+      userId: userId ?? this.userId,
+      sowingDate: sowingDate ?? this.sowingDate,
+      harvestDate: harvestDate ?? this.harvestDate,
+      activities: activities ?? this.activities,
+      createdAt: createdAt ?? this.createdAt,
+      isAIGenerated: isAIGenerated ?? this.isAIGenerated,
+    );
+  }
+
   /// Generate a farming plan using Gemini AI
   static Future<FarmingPlanModel> generateAIPlan({
     required String cropId,

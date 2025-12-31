@@ -359,28 +359,36 @@ class _FarmingCalendarScreenState extends State<FarmingCalendarScreen>
               Icon(
                 _farmingPlan!.isAIGenerated
                     ? Icons.auto_awesome
-                    : Icons.lock_outline,
+                    : Icons.checklist,
                 size: 16,
                 color: _farmingPlan!.isAIGenerated
                     ? Colors.purple
-                    : AppColors.textGrey,
+                    : AppColors.primaryGreen,
               ),
               const SizedBox(width: 4),
-              Text(
-                _farmingPlan!.isAIGenerated
-                    ? 'AI-Generated Weekly Plan'
-                    : 'Auto-generated Plan (Read-only)',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: _farmingPlan!.isAIGenerated
-                      ? Colors.purple
-                      : AppColors.textGrey,
-                  fontStyle: FontStyle.italic,
+              Expanded(
+                child: Text(
+                  _farmingPlan!.isAIGenerated
+                      ? 'AI-Generated Plan - Tap to mark complete'
+                      : 'Farming Plan - Tap to mark complete',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _farmingPlan!.isAIGenerated
+                        ? Colors.purple
+                        : AppColors.primaryGreen,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ],
           ),
 
+          const SizedBox(height: 12),
+
+          // Progress indicator
+          _buildProgressIndicator(),
+
+          const SizedBox(height: 8),
           const SizedBox(height: 16),
 
           ListView.builder(
@@ -394,6 +402,62 @@ class _FarmingCalendarScreenState extends State<FarmingCalendarScreen>
           ),
 
           const SizedBox(height: 80), // Space for FAB
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressIndicator() {
+    if (_farmingPlan == null) return const SizedBox.shrink();
+
+    final total = _farmingPlan!.activities.length;
+    final completed = _farmingPlan!.activities
+        .where((a) => a.isCompleted)
+        .length;
+    final progress = total > 0 ? completed / total : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryGreen.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progress: $completed of $total tasks',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                '${(progress * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryGreen,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primaryGreen,
+              ),
+              minHeight: 8,
+            ),
+          ),
         ],
       ),
     );
@@ -428,108 +492,336 @@ class _FarmingCalendarScreenState extends State<FarmingCalendarScreen>
   }
 
   Widget _buildActivityCard(FarmingActivity activity, int index) {
-    final isPast = activity.date.isBefore(DateTime.now());
+    final isCompleted = activity.isCompleted;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Timeline indicator
-            Column(
-              children: [
-                Container(
+      child: InkWell(
+        onTap: () => _toggleActivityCompletion(activity),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Checkbox for completion
+              GestureDetector(
+                onTap: () => _toggleActivityCompletion(activity),
+                child: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: isPast
+                    color: isCompleted
                         ? AppColors.primaryGreen
                         : AppColors.primaryGreen.withOpacity(0.2),
                     shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primaryGreen, width: 2),
                   ),
                   child: Center(
-                    child: Icon(
-                      _getActivityIcon(activity.type),
-                      size: 20,
-                      color: isPast ? Colors.white : AppColors.primaryGreen,
-                    ),
+                    child: isCompleted
+                        ? const Icon(Icons.check, size: 24, color: Colors.white)
+                        : Icon(
+                            _getActivityIcon(activity.type),
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(width: 16),
+              ),
+              const SizedBox(width: 16),
 
-            // Activity details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    activity.title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isPast
-                          ? AppColors.textGrey
-                          : AppColors.textPrimary,
-                      decoration: isPast ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    activity.description,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textGrey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_today,
-                        size: 14,
-                        color: AppColors.primaryGreen,
+              // Activity details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      activity.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isCompleted
+                            ? AppColors.textGrey
+                            : AppColors.textPrimary,
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${activity.date.day}/${activity.date.month}/${activity.date.year}',
-                        style: const TextStyle(
-                          fontSize: 12,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      activity.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textGrey,
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 14,
                           color: AppColors.primaryGreen,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getActivityTypeColor(
-                            activity.type,
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          activity.type.name.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: _getActivityTypeColor(activity.type),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${activity.date.day}/${activity.date.month}/${activity.date.year}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primaryGreen,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
+                        const SizedBox(width: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getActivityTypeColor(
+                              activity.type,
+                            ).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            activity.type.name.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: _getActivityTypeColor(activity.type),
+                            ),
+                          ),
+                        ),
+                        if (isCompleted) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 12,
+                                  color: AppColors.primaryGreen,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'DONE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Toggle activity completion status
+  Future<void> _toggleActivityCompletion(FarmingActivity activity) async {
+    if (_farmingPlan == null || _farmingPlan!.id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot update - plan not saved yet'),
+          backgroundColor: AppColors.accentRed,
+        ),
+      );
+      return;
+    }
+
+    final activities = _farmingPlan!.activities;
+    final activityIndex = activities.indexWhere((a) => a.id == activity.id);
+    final newStatus = !activity.isCompleted;
+
+    // Enforce sequential completion
+    if (newStatus) {
+      // When marking as complete, check if all previous tasks are completed
+      for (int i = 0; i < activityIndex; i++) {
+        if (!activities[i].isCompleted) {
+          _showSequentialWarning(activities[i], activityIndex - i);
+          return;
+        }
+      }
+    } else {
+      // When unmarking as complete, check if any later tasks are completed
+      for (int i = activityIndex + 1; i < activities.length; i++) {
+        if (activities[i].isCompleted) {
+          _showUnmarkWarning(activity);
+          return;
+        }
+      }
+    }
+
+    // Optimistically update UI
+    setState(() {
+      final updatedActivities = _farmingPlan!.activities.map((a) {
+        if (a.id == activity.id) {
+          return a.copyWith(isCompleted: newStatus);
+        }
+        return a;
+      }).toList();
+
+      _farmingPlan = _farmingPlan!.copyWith(activities: updatedActivities);
+    });
+
+    try {
+      await _firebaseService.updateActivityCompletion(
+        planId: _farmingPlan!.id,
+        activityId: activity.id,
+        isCompleted: newStatus,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newStatus
+                  ? '✅ "${activity.title}" marked as completed!'
+                  : '↩️ "${activity.title}" marked as pending',
+            ),
+            backgroundColor: newStatus
+                ? AppColors.primaryGreen
+                : AppColors.accentOrange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        final revertedActivities = _farmingPlan!.activities.map((a) {
+          if (a.id == activity.id) {
+            return a.copyWith(isCompleted: !newStatus);
+          }
+          return a;
+        }).toList();
+
+        _farmingPlan = _farmingPlan!.copyWith(activities: revertedActivities);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update: $e'),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Show warning when user tries to complete a task out of sequence
+  void _showSequentialWarning(FarmingActivity pendingTask, int tasksAhead) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.accentOrange,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            const Text('Complete Tasks in Order'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You need to complete $tasksAhead ${tasksAhead == 1 ? 'task' : 'tasks'} before this one.',
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accentOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: AppColors.accentOrange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Next task: "${pendingTask.title}"',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.accentOrange,
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK, Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show warning when user tries to unmark a task that has later completed tasks
+  void _showUnmarkWarning(FarmingActivity activity) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: AppColors.accentBlue, size: 28),
+            const SizedBox(width: 8),
+            const Text('Cannot Unmark Task'),
+          ],
+        ),
+        content: Text(
+          'You cannot unmark "${activity.title}" because later tasks are already completed. '
+          'Please unmark the later tasks first.',
+          style: const TextStyle(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK, Got it'),
+          ),
+        ],
       ),
     );
   }

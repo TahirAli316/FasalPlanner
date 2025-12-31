@@ -350,6 +350,40 @@ class FirebaseService {
     }
   }
 
+  /// Update activity completion status in farming plan
+  Future<void> updateActivityCompletion({
+    required String planId,
+    required String activityId,
+    required bool isCompleted,
+  }) async {
+    try {
+      // Get the current plan document
+      final doc = await _farmingPlansCollection.doc(planId).get();
+      if (!doc.exists) return;
+
+      final data = doc.data() as Map<String, dynamic>;
+      final activities = List<Map<String, dynamic>>.from(
+        data['activities'] ?? [],
+      );
+
+      // Find and update the specific activity
+      for (int i = 0; i < activities.length; i++) {
+        if (activities[i]['id'] == activityId) {
+          activities[i]['isCompleted'] = isCompleted;
+          break;
+        }
+      }
+
+      // Update the document
+      await _farmingPlansCollection.doc(planId).update({
+        'activities': activities,
+      });
+    } catch (e) {
+      print('Error updating activity completion: $e');
+      rethrow;
+    }
+  }
+
   /// Stream of farming plan
   Stream<FarmingPlanModel?> getFarmingPlanStream(String userId) {
     return _farmingPlansCollection
