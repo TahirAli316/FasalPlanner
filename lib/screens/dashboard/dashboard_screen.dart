@@ -22,7 +22,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver, RouteAware {
   final _firebaseService = FirebaseService();
   final _weatherService = WeatherService();
 
@@ -31,14 +32,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingWeather = true;
   String? _weatherError;
 
+  // Store selected crop in state to avoid FutureBuilder caching issues
+  dynamic _selectedCrop;
+  bool _isLoadingCrop = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadData(); // Reload when app comes to foreground
+    }
   }
 
   Future<void> _loadData() async {
     await _loadUserData();
+    await _loadSelectedCrop();
     await _loadWeather();
   }
 
@@ -60,6 +80,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } catch (e) {
         // Handle permission error gracefully
         print('Error loading user data: $e');
+      }
+    }
+  }
+
+  Future<void> _loadSelectedCrop() async {
+    if (_user?.selectedCropId == null) {
+      if (mounted) {
+        setState(() {
+          _selectedCrop = null;
+          _isLoadingCrop = false;
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _isLoadingCrop = true;
+    });
+
+    try {
+      final crop = await _firebaseService.getCropById(_user!.selectedCropId!);
+      if (mounted) {
+        setState(() {
+          _selectedCrop = crop;
+          _isLoadingCrop = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading selected crop: $e');
+      if (mounted) {
+        setState(() {
+          _selectedCrop = null;
+          _isLoadingCrop = false;
+        });
       }
     }
   }
@@ -191,18 +245,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   QuickActionButton(
                     label: 'Crop\nRecommendation',
                     icon: Icons.eco,
-                    onTap: () {
-                      Navigator.pushNamed(
+                    onTap: () async {
+                      await Navigator.pushNamed(
                         context,
                         AppRoutes.cropRecommendation,
                       );
+                      // Reload data when returning from crop recommendation
+                      _loadData();
                     },
                   ),
                   QuickActionButton(
                     label: 'Selected\nCrop',
                     icon: Icons.grass,
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.cropSelection);
+                    onTap: () async {
+                      await Navigator.pushNamed(
+                        context,
+                        AppRoutes.cropSelection,
+                      );
+                      // Reload data when returning from crop selection
+                      _loadData();
                     },
                   ),
                   QuickActionButton(
@@ -237,67 +298,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 const SizedBox(height: 12),
 
-                FutureBuilder(
-                  future: _firebaseService.getCropById(_user!.selectedCropId!),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primaryGreen,
+                if (_isLoadingCrop)
+                  const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryGreen,
+                    ),
+                  )
+                else if (_selectedCrop == null)
+                  const Text('No crop selected')
+                else
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    }
-
-                    final crop = snapshot.data;
-                    if (crop == null) {
-                      return const Text('No crop selected');
-                    }
-
-                    return Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        child: Center(
+                          child: Text(
+                            _selectedCrop.iconName,
+                            style: const TextStyle(fontSize: 28),
+                          ),
+                        ),
                       ),
-                      child: ListTile(
-                        leading: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              crop.iconName,
-                              style: const TextStyle(fontSize: 28),
-                            ),
-                          ),
+                      title: Text(
+                        _selectedCrop.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                         ),
-                        title: Text(
-                          crop.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${crop.growingDurationDays} days • ${crop.season}',
-                          style: const TextStyle(color: AppColors.textGrey),
-                        ),
-                        trailing: const Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: AppColors.primaryGreen,
-                        ),
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.farmingCalendar,
-                          );
-                        },
                       ),
-                    );
-                  },
-                ),
+                      subtitle: Text(
+                        '${_selectedCrop.growingDurationDays} days • ${_selectedCrop.season}',
+                        style: const TextStyle(color: AppColors.textGrey),
+                      ),
+                      trailing: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: AppColors.primaryGreen,
+                      ),
+                      onTap: () {
+                        Navigator.pushNamed(context, AppRoutes.farmingCalendar);
+                      },
+                    ),
+                  ),
               ],
 
               const SizedBox(height: 24),
