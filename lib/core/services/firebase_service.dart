@@ -10,6 +10,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../models/user_model.dart';
 import '../../models/crop_model.dart';
 import '../../models/farming_plan_model.dart';
@@ -96,33 +97,69 @@ class FirebaseService {
 
   /// Logout
   Future<void> logout() async {
-    await GoogleSignIn().signOut();
+    try {
+      if (!kIsWeb) {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
+        if (await googleSignIn.isSignedIn()) {
+          await googleSignIn.disconnect();
+        }
+      }
+    } catch (e) {
+      // Ignore Google Sign-In errors during logout
+    }
     await _auth.signOut();
   }
 
   /// Sign in with Google
   Future<UserModel?> signInWithGoogle() async {
     try {
-      // Trigger the Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      UserCredential userCredential;
 
-      if (googleUser == null) {
-        // User cancelled the sign-in
-        return null;
+      if (kIsWeb) {
+        // For Web: Use Firebase Auth's signInWithPopup for proper account selection
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        // This parameter forces account selection every time
+        googleProvider.setCustomParameters({
+          'prompt': 'select_account',
+          'login_hint': '',
+        });
+
+        // Sign out first to ensure fresh login
+        await _auth.signOut();
+
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        // For Mobile (Android/iOS): Use google_sign_in package
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+        );
+
+        // Sign out first to always show account picker
+        await googleSignIn.signOut();
+
+        // Trigger the Google Sign-In flow
+        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+        if (googleUser == null) {
+          // User cancelled the sign-in
+          return null;
+        }
+
+        // Obtain the auth details from the request
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+
+        // Create a new credential
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase with the Google credential
+        userCredential = await _auth.signInWithCredential(credential);
       }
-
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // Create a new credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in to Firebase with the Google credential
-      final userCredential = await _auth.signInWithCredential(credential);
 
       if (userCredential.user != null) {
         // Check if user already exists in Firestore
