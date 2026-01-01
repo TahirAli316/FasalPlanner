@@ -40,6 +40,9 @@ dependencies:
   firebase_auth: ^5.5.0
   cloud_firestore: ^5.6.2
 
+  # Google Sign-In
+  google_sign_in: ^6.2.1
+
   # HTTP client for OpenWeatherMap API
   http: ^1.2.2
 
