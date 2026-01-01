@@ -12,10 +12,37 @@ class WeatherService {
   static const String _baseUrl =
       'https://api.openweathermap.org/data/2.5/weather';
 
+  // Map Pakistani provinces to their capital/major cities for weather lookup
+  static const Map<String, String> _provinceToCityMap = {
+    'KPK': 'Peshawar',
+    'Khyber Pakhtunkhwa': 'Peshawar',
+    'Punjab': 'Lahore',
+    'Sindh': 'Karachi',
+    'Balochistan': 'Quetta',
+    'Gilgit-Baltistan': 'Gilgit',
+    'Azad Kashmir': 'Muzaffarabad',
+    'Islamabad': 'Islamabad',
+  };
+
+  /// Convert province name to city name for weather API
+  String _getWeatherCity(String location) {
+    // Check if location is a province name
+    final cityName = _provinceToCityMap[location];
+    if (cityName != null) {
+      return cityName;
+    }
+    // If not a province, assume it's already a city name
+    return location;
+  }
+
   /// Fetch current weather by city name
   Future<WeatherData> getCurrentWeather(String city) async {
     try {
-      final url = Uri.parse('$_baseUrl?q=$city&appid=$_apiKey&units=metric');
+      // Convert province to city if needed
+      final weatherCity = _getWeatherCity(city);
+      final url = Uri.parse(
+        '$_baseUrl?q=$weatherCity,PK&appid=$_apiKey&units=metric',
+      );
       print('Fetching weather from: $url'); // Debug log
 
       final response = await http

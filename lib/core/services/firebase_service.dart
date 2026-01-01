@@ -281,7 +281,94 @@ class FirebaseService {
     if (doc.exists) {
       return CropModel.fromFirestore(doc);
     }
-    return null;
+
+    // If crop not found in Firestore, create a model from the crop key
+    // This handles ML-predicted crops that aren't in the database
+    return _createCropFromKey(cropId);
+  }
+
+  /// Create a CropModel from crop key for ML-predicted crops
+  CropModel? _createCropFromKey(String cropKey) {
+    // Map of ML model crop keys to their details
+    const cropDetails = {
+      'apple': {'name': 'Apple', 'duration': 365, 'season': 'Year-round'},
+      'banana': {'name': 'Banana', 'duration': 300, 'season': 'Year-round'},
+      'blackgram': {'name': 'Black Gram', 'duration': 90, 'season': 'Kharif'},
+      'chickpea': {'name': 'Chickpea', 'duration': 100, 'season': 'Rabi'},
+      'coconut': {'name': 'Coconut', 'duration': 365, 'season': 'Year-round'},
+      'coffee': {'name': 'Coffee', 'duration': 365, 'season': 'Year-round'},
+      'cotton': {'name': 'Cotton', 'duration': 180, 'season': 'Kharif'},
+      'grapes': {'name': 'Grapes', 'duration': 365, 'season': 'Year-round'},
+      'jute': {'name': 'Jute', 'duration': 120, 'season': 'Kharif'},
+      'kidneybeans': {
+        'name': 'Kidney Beans',
+        'duration': 90,
+        'season': 'Kharif',
+      },
+      'lentil': {'name': 'Lentil', 'duration': 110, 'season': 'Rabi'},
+      'maize': {
+        'name': 'Maize (Corn)',
+        'duration': 100,
+        'season': 'Kharif & Rabi',
+      },
+      'mango': {'name': 'Mango', 'duration': 365, 'season': 'Year-round'},
+      'mothbeans': {'name': 'Moth Beans', 'duration': 75, 'season': 'Kharif'},
+      'mungbean': {'name': 'Mung Bean', 'duration': 70, 'season': 'Kharif'},
+      'muskmelon': {'name': 'Muskmelon', 'duration': 90, 'season': 'Summer'},
+      'orange': {'name': 'Orange', 'duration': 365, 'season': 'Year-round'},
+      'papaya': {'name': 'Papaya', 'duration': 270, 'season': 'Year-round'},
+      'pigeonpeas': {
+        'name': 'Pigeon Peas',
+        'duration': 180,
+        'season': 'Kharif',
+      },
+      'pomegranate': {
+        'name': 'Pomegranate',
+        'duration': 365,
+        'season': 'Year-round',
+      },
+      'rice': {'name': 'Rice', 'duration': 150, 'season': 'Kharif'},
+      'watermelon': {'name': 'Watermelon', 'duration': 90, 'season': 'Summer'},
+      'wheat': {'name': 'Wheat', 'duration': 120, 'season': 'Rabi'},
+      'potato': {'name': 'Potato', 'duration': 90, 'season': 'Rabi'},
+      'tomato': {'name': 'Tomato', 'duration': 75, 'season': 'Year-round'},
+      'onion': {'name': 'Onion', 'duration': 120, 'season': 'Rabi'},
+      'sugarcane': {
+        'name': 'Sugarcane',
+        'duration': 365,
+        'season': 'Year-round',
+      },
+    };
+
+    final details = cropDetails[cropKey.toLowerCase()];
+    if (details == null) {
+      // If crop key not recognized, create a generic crop
+      return CropModel(
+        id: cropKey,
+        name: cropKey[0].toUpperCase() + cropKey.substring(1),
+        description: 'Selected crop: $cropKey',
+        suitableRegions: ['Punjab', 'Sindh', 'KPK', 'Balochistan'],
+        suitableSoilTypes: ['Loamy', 'Sandy Loam'],
+        minLandSize: 0.5,
+        growingDurationDays: 120,
+        season: 'Seasonal',
+        expectedYieldPerAcre: 20,
+        waterRequirement: 'Medium',
+      );
+    }
+
+    return CropModel(
+      id: cropKey,
+      name: details['name'] as String,
+      description: 'AI recommended crop: ${details['name']}',
+      suitableRegions: ['Punjab', 'Sindh', 'KPK', 'Balochistan'],
+      suitableSoilTypes: ['Loamy', 'Sandy Loam', 'Clay'],
+      minLandSize: 0.5,
+      growingDurationDays: details['duration'] as int,
+      season: details['season'] as String,
+      expectedYieldPerAcre: 20,
+      waterRequirement: 'Medium',
+    );
   }
 
   /// Initialize sample crops (call once to seed database)
